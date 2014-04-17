@@ -1,15 +1,33 @@
 package com.durej.PSDParser 
 {
-	import flash.geom.Point;
-	import flash.display.BitmapData;
-	import flash.filters.GlowFilter;
-	import flash.filters.DropShadowFilter;
-	import flash.display.BlendMode;
-	import flash.geom.Rectangle;
-	import flash.utils.ByteArray;
-	/**
-	 * @author Slavomir Durej
-	 */
+    import flash.display.BitmapData;
+    import flash.display.BlendMode;
+    import flash.filters.DropShadowFilter;
+    import flash.filters.GlowFilter;
+    import flash.geom.Point;
+    import flash.geom.Rectangle;
+    import flash.utils.ByteArray;
+
+    /**
+     * com.durej.PSDLayer
+     *
+     * @author       Copyright (c) 2010 Slavomir Durej
+     * @version      0.1
+     *
+     * @link         http://durej.com/
+     *
+     * Licensed under the Apache License, Version 2.0 (the "License");
+     * you may not use this file except in compliance with the License.
+     * You may obtain a copy of the License at
+     *
+     * http://www.apache.org/licenses/LICENSE-2.0
+     *
+     * Unless required by applicable law or agreed to in writing, software
+     * distributed under the License is distributed on an "AS IS" BASIS,
+     * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+     * either express or implied. See the License for the specific language
+     * governing permissions and limitations under the License.
+     */
 	public class PSDLayer 
 	{
 		public static const LayerType_FOLDER_OPEN 	: String = "folder_open";
@@ -44,7 +62,6 @@ package com.durej.PSDParser
 			this.fileData = fileData;
 			readLayerBasicInfo();	
 		}
-		
 
 		private function readLayerBasicInfo() : void 
 		{
@@ -216,8 +233,7 @@ package com.durej.PSDParser
 			
 			fileData.position += pos + extraSize - fileData.position;
 		}
-		
-		
+
 		private function parseLayerEffects() :void
 		{
 			filters_arr = new Array();
@@ -279,11 +295,7 @@ package com.durej.PSDParser
 			}
 			filters_arr.reverse();
 		}		
-		
-		
-		
 
-		
 		private function parseGlow(fileData:ByteArray, inner:Boolean = false):void
 		{
 			//4 Size of the remaining items: 41 or 51 (depending on version)
@@ -447,7 +459,6 @@ package com.durej.PSDParser
 			return  {str:fileData.readMultiByte( size, "shift-jis").toString(), length:size + 1};
 		}
 
-
 		public function getBlendMode():String
 		{
 			switch(blendModeKey)
@@ -464,10 +475,7 @@ package com.durej.PSDParser
 				default 	: return BlendMode.NORMAL; 
 			}
 		}
-		
-			
-			
-		
+
 		private function parseLayerMaskData( stream:ByteArray ):void 
 		{
 			//-------------------------------------------------------------  READING LAYER MASK

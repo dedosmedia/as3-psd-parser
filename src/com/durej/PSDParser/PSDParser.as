@@ -2,6 +2,7 @@ package com.durej.PSDParser
 {
 	 import flash.display.BitmapData;
 	 import flash.utils.ByteArray;
+
 	 /**
 	 * com.durej.PSDParser  
 	 *  
@@ -123,7 +124,6 @@ package com.durej.PSDParser
 			fileData.position += size;
 		
 		}
-		
 
 		private function readImageResources():void 
 		{
@@ -224,7 +224,6 @@ package com.durej.PSDParser
 			fileData.position += pos + layerInfoSize - fileData.position;
 		}
 
-
 		private function parseMaskInfo() : void 
 		{
 			//TODO implement proper mask parsing
@@ -237,8 +236,7 @@ package com.durej.PSDParser
 			
 			fileData.position += 1; // padding
 		}		
-		
-		
+
 		private function readCompositeData() :void
 		{
 			//identify the compression

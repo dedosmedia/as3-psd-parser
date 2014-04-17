@@ -1,24 +1,42 @@
 package
 {
-	import flash.text.TextFieldAutoSize;
-	import com.durej.PSDParser.PSDLayer;
-	import flash.display.BitmapData;
-	import flash.display.Bitmap;
-	import flash.text.TextFormat;
-	import flash.display.StageScaleMode;
-	import flash.display.StageAlign;
-	import flash.events.MouseEvent;
-	import flash.text.TextField;
-	import com.durej.PSDParser.PSDParser;
-	import flash.net.FileFilter;
-	import flash.events.Event;
-	import flash.net.FileReference;
-	import flash.display.Sprite;
-	/**
-	 * @author Slavomir Durej
-	 */
+    import com.durej.PSDParser.PSDLayer;
+    import com.durej.PSDParser.PSDParser;
+
+    import flash.display.Bitmap;
+    import flash.display.BitmapData;
+    import flash.display.Sprite;
+    import flash.display.StageAlign;
+    import flash.display.StageScaleMode;
+    import flash.events.Event;
+    import flash.events.MouseEvent;
+    import flash.net.FileFilter;
+    import flash.net.FileReference;
+    import flash.text.TextField;
+    import flash.text.TextFieldAutoSize;
+    import flash.text.TextFormat;
+
+    /**
+     * com.durej.PSDParser
+     *
+     * @author       Copyright (c) 2010 Slavomir Durej
+     * @version      0.1
+     *
+     * @link         http://durej.com/
+     *
+     * Licensed under the Apache License, Version 2.0 (the "License");
+     * you may not use this file except in compliance with the License.
+     * You may obtain a copy of the License at
+     *
+     * http://www.apache.org/licenses/LICENSE-2.0
+     *
+     * Unless required by applicable law or agreed to in writing, software
+     * distributed under the License is distributed on an "AS IS" BASIS,
+     * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+     * either express or implied. See the License for the specific language
+     * governing permissions and limitations under the License.
+     */
 	[SWF(backgroundColor="#FFFFFF", frameRate="31", width="800", height="480")]
-	 
 	public class Main extends Sprite 
 	{
 		private var file					: FileReference;
