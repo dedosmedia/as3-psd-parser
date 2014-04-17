@@ -10,11 +10,15 @@ package
     import flash.display.StageScaleMode;
     import flash.events.Event;
     import flash.events.MouseEvent;
+    import flash.filesystem.File;
+    import flash.filesystem.FileMode;
+    import flash.filesystem.FileStream;
     import flash.net.FileFilter;
     import flash.net.FileReference;
     import flash.text.TextField;
     import flash.text.TextFieldAutoSize;
     import flash.text.TextFormat;
+    import flash.utils.IDataInput;
 
     /**
      * com.durej.PSDParser
@@ -39,7 +43,15 @@ package
 	[SWF(backgroundColor="#FFFFFF", frameRate="31", width="800", height="480")]
 	public class Main extends Sprite 
 	{
+        // Quick internal toggle to run demo using FileStream for parsing
+        // or the original demo code that used ByteArray and loaded .psd fully into memory first
+        private static const USE_FILESTREAM:Boolean = true;
+
+        // used with ByteArray parsing
 		private var file					: FileReference;
+        // used with FileStream parsing
+        private var fileToOpen              : File;
+
 		private var psdParser				: PSDParser;
 		private var layersLevel				: Sprite;
 		
@@ -90,29 +102,55 @@ package
 			this.addEventListener(MouseEvent.CLICK, loadPSD);
 		}
 
-		//load action must be perfomed on click due to the flash 10 security
+		//load action must be performed on click due to the flash 10 security
 		protected function loadPSD(e:Event):void
 		{
-			file = null;
-			file = new FileReference();
-			file.addEventListener(Event.SELECT, onFileSelected);
-			file.browse([new FileFilter("Photoshop Files","*.psd;")]); 
-		}
-			
-		
+            var filter:FileFilter = new FileFilter("Photoshop Files","*.psd;");
+
+            if (USE_FILESTREAM) {
+                trace("Parsing file with FileStream...");
+                fileToOpen = File.userDirectory;
+                fileToOpen.browseForOpen("Open", [filter]);
+                fileToOpen.addEventListener(Event.SELECT, onFileSelected);
+            }
+            else {
+                // using ByteArray
+                trace("Parsing file loaded as ByteArray...");
+                file = new FileReference();
+                file.addEventListener(Event.SELECT, onFileSelected);
+                file.browse([filter]);
+            }
+        }
+
 		//after file has been selected , load it
 		private function onFileSelected(event:Event):void 
 		{
-			file.removeEventListener(Event.SELECT, onFileSelected);
-			file.addEventListener(Event.COMPLETE,parsePSDData);
-			file.load();
+            // if using FileStream...
+            if (USE_FILESTREAM) {
+                fileToOpen.removeEventListener(Event.SELECT, onFileSelected);
+                var stream:FileStream = new FileStream();
+                stream.open(fileToOpen, FileMode.READ);
+                parsePSDData(stream);
+                stream.close();
+            }
+            else {
+                // if using ByteArray result...
+                file.removeEventListener(Event.SELECT, onFileSelected);
+                file.addEventListener(Event.COMPLETE,onFileLoad);
+                file.load();
+            }
 		}
-		
-		//after file has been loaded parse it	
-		private function parsePSDData(event:Event):void
+
+        private function onFileLoad(event:Event):void
+        {
+            parsePSDData(file.data);
+        }
+
+		//after stream has been open or file has been loaded fully as ByteArray, parse it
+		private function parsePSDData(source:IDataInput):void
 		{
 			psdParser = PSDParser.getInstance();
-			psdParser.parse(file.data);	
+			psdParser.parse(source);
 			
 			layersLevel = new Sprite();
 			this.addChild(layersLevel);

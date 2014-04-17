@@ -2,6 +2,7 @@ package com.durej.PSDParser
 {
 	import flash.display.BitmapData;
 	import flash.utils.ByteArray;
+    import flash.utils.IDataInput;
 
     /**
      * com.durej.PSDLayerBitmap
@@ -26,7 +27,7 @@ package com.durej.PSDParser
 	public class PSDLayerBitmap 
 	{
 		private var layer 			: PSDLayer;
-		private var fileData 		: ByteArray;
+		private var dataSource 		: IDataInput;
 		private var lineLengths 	: Array;
 
 		public var channels 		: Array;
@@ -34,10 +35,10 @@ package com.durej.PSDParser
 		private var width 			: int;
 		private var height 			: int;
 
-		public function PSDLayerBitmap ( layer:PSDLayer, fileData:ByteArray) 
+		public function PSDLayerBitmap ( layer:PSDLayer, data:IDataInput)
 		{
 			this.layer 				= layer;
-			this.fileData 			= fileData;
+			this.dataSource 			= data;
 
 			readChannels();
 		}
@@ -62,10 +63,10 @@ package com.durej.PSDParser
 				for ( var i:int = 0; i < channelsLength; ++i ) 
 				{
 					var channelLenghtInfo	:PSDChannelInfoVO = layer.channelsInfo_arr[i];
-					pixelDataSize+=channelLenghtInfo.length;
+					pixelDataSize += channelLenghtInfo.length;
 				}
 				//skip image data parsing for layer folders (for now)
-				fileData.position+= pixelDataSize;
+				dataSource["position"] += pixelDataSize;
 				return;
 			}
 
@@ -92,7 +93,7 @@ package com.durej.PSDParser
 				
 				if ((width*height) == 0) //TODO fix this later
 				{
-					var compression:int = fileData.readShort();
+					var compression:int = dataSource.readShort();
 					return;
 				}
 				
@@ -136,7 +137,7 @@ package com.durej.PSDParser
 
 			imageData = new ByteArray();
 			
-			var compression:int = fileData.readShort();
+			var compression:int = dataSource.readShort();
 			isRLEncoded = (compression == 1);
 			
 			if (isRLEncoded)
@@ -145,13 +146,13 @@ package com.durej.PSDParser
 				
 				for ( i = 0; i < height; ++i ) 
 				{
-					lineLengths[i] = fileData.readUnsignedShort();
+					lineLengths[i] = dataSource.readUnsignedShort();
 				}
 				//read compressed chanel data 
 				for ( i = 0; i < height; ++i ) 
 				{
 					var line:ByteArray = new ByteArray();
-					fileData.readBytes( line, 0, lineLengths[i] );
+                    dataSource.readBytes( line, 0, lineLengths[i] );
 					imageData.writeBytes( unpack( line ) );
 				}
 			}
@@ -160,21 +161,18 @@ package com.durej.PSDParser
 				if (compression == 0)
 				{
 					//read raw data
-					fileData.readBytes( imageData, 0,  channelDataSize);
+                    dataSource.readBytes( imageData, 0,  channelDataSize);
 				}
 				else
 				{
 					//skip data
-					fileData.position+=channelLength;
+					dataSource["position"] += channelLength;
 				}
 			}
 
 			return imageData;	
 		}
-	
-	
-	
-		
+
 		private function renderImage( transparent:Boolean = false ):void 
 		{
 			if (transparent) image = new BitmapData( width, height, true, 0x00000000 );
@@ -229,9 +227,7 @@ package com.durej.PSDParser
 				}
 			}
 		}
-		
-		
-		
+
 		public function unpack( packed:ByteArray ):ByteArray 
 		{
 			var i:int;

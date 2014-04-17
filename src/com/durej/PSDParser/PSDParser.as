@@ -1,9 +1,10 @@
 package com.durej.PSDParser 
 {
-	 import flash.display.BitmapData;
-	 import flash.utils.ByteArray;
+    import flash.display.BitmapData;
+    import flash.utils.ByteArray;
+    import flash.utils.IDataInput;
 
-	 /**
+    /**
 	 * com.durej.PSDParser  
 	 *  
 	 * @author       Copyright (c) 2010 Slavomir Durej
@@ -33,7 +34,7 @@ package com.durej.PSDParser
 		private const COMP_ZIP_W			: int = 2;		//ZIP without prediction
 		private const COMP_ZIP_P			: int = 3;		//ZIP with prediction.
 		
-		private var fileData				: ByteArray;
+		private var dataSource  			: IDataInput;
 		public var numChannels				: int;
 		public var canvas_height			: int;
 		public var canvas_width				: int;
@@ -48,10 +49,16 @@ package com.durej.PSDParser
 		{
 			if (!fromSingleton || blocker == null) throw new Error("use getInstance");
 		}
-		
-		public function parse(fileData:ByteArray):void
+
+        // As currently coded, IDataInput must currently support a .position property
+        // so currently only ByteArray and FileStream supported
+        // could try to reimplement or complicate the seek calls with setting 'position' to try and avoid this...
+		public function parse(data:IDataInput):void
 		{
-			this.fileData = fileData;
+            if (!data || !("position" in data))
+                throw new Error("IDataInput must currently support position property. Limited to ByteArray and FileStream currently.");
+
+			this.dataSource = data;
 			
 			readHeader();
 			readImageResources();
@@ -61,12 +68,12 @@ package com.durej.PSDParser
 
 		private function readHeader() : void 
 		{
-			//check signatue
+			//check signature
 			/*
 				Signature: always equal to '8BPS'. Do not try to read the file if the
 				signature does not match this value.
 			 */
-			var sig:String = fileData.readUTFBytes( 4 );
+			var sig:String = dataSource.readUTFBytes( 4 );
 			if (sig!= "8BPS" ) throw new Error("invalid signature: " + sig );
 			
 			//version
@@ -74,34 +81,34 @@ package com.durej.PSDParser
 			 * 	Version: always equal to 1. Do not try to read the file if the version does
 				not match this value. (**PSB** version is 2.)
 			 */
-			var version: int = fileData.readUnsignedShort();
+			var version: int = dataSource.readUnsignedShort();
 			if (version!= 1) throw new Error("invalid version: " + version );
 			
 			//Reserved, must be zero
-			fileData.position += 6;
+            dataSource["position"] += 6;
 			
-			//chanels
+			//channels
 			/*
 				The number of channels in the image, including any alpha channels.
 				Supported range is 1 to 56.
 			 */
-			numChannels = fileData.readUnsignedShort();
+			numChannels = dataSource.readUnsignedShort();
 			
 			//The height of the image in pixels. Supported range is 1 to 30,000.
-			canvas_height = fileData.readInt();
+			canvas_height = dataSource.readInt();
 			
 			//The width of the image in pixels. Supported range is 1 to 30,000.
-			canvas_width = fileData.readInt();
+			canvas_width = dataSource.readInt();
 			
 			//Depth: the number of bits per channel. Supported values are 1, 8, and 16.
-			colorChannelDepth = fileData.readUnsignedShort();
+			colorChannelDepth = dataSource.readUnsignedShort();
 			
 			//document color mode
 			/*		
 				The color mode of the file. Supported values are: Bitmap = 0; Grayscale =
 				1; Indexed = 2; RGB = 3; CMYK = 4; Multichannel = 7; Duotone = 8; Lab = 9. 
  			*/
-			colorMode = fileData.readUnsignedShort();
+			colorMode = dataSource.readUnsignedShort();
 
 			switch (colorMode)
 			{
@@ -120,27 +127,27 @@ package com.durej.PSDParser
 			 Only indexed color and duotone (see the mode field in Table 1.2) have color mode
 			data. For all other modes, this section is just the 4-byte length field, which is set to zero. 
 			 */
-			var size:int = fileData.readInt();
-			fileData.position += size;
+			var size:int = dataSource.readInt();
+            dataSource["position"] += size;
 		
 		}
 
 		private function readImageResources():void 
 		{
 			//Length of image resource section.
-			var size:uint = fileData.readUnsignedInt();
+			var size:uint = dataSource.readUnsignedInt();
 			
 			// how much was read
 			var read:uint = 0;
 
 			while ( read < size ) 
 			{
-				var sig:String = fileData.readUTFBytes(4); 
+				var sig:String = dataSource.readUTFBytes(4);
 				if ( sig != "8BIM") throw new Error("Invalid signature: " + sig );
 				read += 4;
 				
 				//Unique identifier for the resource.
-				var resourceID:int = fileData.readUnsignedShort();
+				var resourceID:int = dataSource.readUnsignedShort();
 				read += 2;
 				
 				//Name: Pascal string, padded to make the size even (a null name consists of two bytes of 0)
@@ -149,15 +156,15 @@ package com.durej.PSDParser
 				read += nameObj.length;
 				
 				//Actual size of resource data that follows
-				var resourceSize:uint = fileData.readUnsignedInt();
+				var resourceSize:uint = dataSource.readUnsignedInt();
 				read += 4;
 				
 				//readResourceBlock(resourceSize, resourceID);
-				fileData.position += resourceSize;
+                dataSource["position"] += resourceSize;
 				read += resourceSize;
 				
 				if ( resourceSize % 2 == 1 ) {
-					fileData.readByte();
+                    dataSource.readByte();
 					read++;
 				}
 			}
@@ -166,39 +173,33 @@ package com.durej.PSDParser
 		private function readLayerAndMaskInfo() : void
 		{
 			//Length of the layer and mask information section.
-			var size 	: uint = fileData.readUnsignedInt();
+			var size 	: uint = dataSource.readUnsignedInt();
 			
 			//current read position
-			var pos 	: uint = fileData.position;
+            var pos 	: uint = dataSource["position"];
 			
 			if ( size > 0 ) 
 			{
-				parseLayerInfo();
-				parseMaskInfo();
-				
-				fileData.position += pos + size - fileData.position;
+                parseLayerInfo();
+                parseMaskInfo();
+
+                dataSource["position"] += pos + size - dataSource["position"];
 			}			
 		}
 
-		//loop throigh the layers and get all the layer info
-		private function parseLayerInfo( ) : void 
+		//loop through the layers and get all the layer info
+		private function parseLayerInfo( ) : void
 		{
 			//Length of the layers info section, rounded up to a multiple of 2.
-			var layerInfoSize 	: uint = fileData.readUnsignedInt();
+			var layerInfoSize 	: uint = dataSource.readUnsignedInt();
 			
 			//current read position
-			var pos 			: int = fileData.position;
-			
-			//all layers init
-			allLayers = new Array(numLayers);
-			
-			//all bitmaps init
-			allBitmaps = new Array(numLayers);
-			
+			var pos 			: int = dataSource["position"];
+
 			if ( layerInfoSize > 0 ) 
 			{
 				//get total nu of layers
-				var nLayers : int = fileData.readShort();
+				var nLayers : int = dataSource.readShort();
 				
 				/*
 					Layer count. If it is a negative number, its absolute value is the number of
@@ -206,41 +207,47 @@ package com.durej.PSDParser
 					merged result.				  
 				 */
 				var numLayers : int = Math.abs(nLayers);
-				
+
+                //all layers init
+                allLayers = new Array(numLayers);
+
+                //all bitmaps init
+                allBitmaps = new Array(numLayers);
+
 				//loop through all layers to retrieve layer object info and image data				
 				for (var i:int = 0; i < numLayers;++i ) 
 				{
-					allLayers[i] = new PSDLayer(fileData);
+					allLayers[i] = new PSDLayer(dataSource);
 				}
 				
 				for ( i = 0;i < numLayers;++i ) 
 				{
 					var layer_psd : PSDLayer = allLayers[i];
-					var layer_bmp : PSDLayerBitmap = new PSDLayerBitmap(layer_psd, fileData); 
+					var layer_bmp : PSDLayerBitmap = new PSDLayerBitmap(layer_psd, dataSource);
 					allBitmaps[i] = layer_bmp;
 					layer_psd.bmp = layer_bmp.image;
 				}
-			} 
-			fileData.position += pos + layerInfoSize - fileData.position;
+			}
+            dataSource["position"] += pos + layerInfoSize - dataSource["position"];
 		}
 
-		private function parseMaskInfo() : void 
+		private function parseMaskInfo() : void
 		{
 			//TODO implement proper mask parsing
-			var size 		: uint = fileData.readUnsignedInt();
-			var overlay 	: uint = fileData.readUnsignedShort();
-			var color1 		: uint = fileData.readUnsignedInt();
-			var color2 		: uint = fileData.readUnsignedInt();
-			var opacity 	: uint = fileData.readUnsignedShort();
-			var kind 		: uint = fileData.readUnsignedByte();
-			
-			fileData.position += 1; // padding
-		}		
+			var size 		: uint = dataSource.readUnsignedInt();
+			var overlay 	: uint = dataSource.readUnsignedShort();
+			var color1 		: uint = dataSource.readUnsignedInt();
+			var color2 		: uint = dataSource.readUnsignedInt();
+			var opacity 	: uint = dataSource.readUnsignedShort();
+			var kind 		: uint = dataSource.readUnsignedByte();
+
+            dataSource["position"] += 1; // padding
+		}
 
 		private function readCompositeData() :void
 		{
 			//identify the compression
-			var compression 		: int 	= fileData.readUnsignedShort();
+			var compression 		: int 	= dataSource.readUnsignedShort();
 			var channelsData_arr 	: Array = new Array();
 			
 			switch (compression) 
@@ -250,7 +257,7 @@ package com.durej.PSDParser
 					for ( var channel:int = 0; channel < numChannels; ++channel )
 					{
 						var data:ByteArray = new ByteArray();
-						fileData.readBytes( data, 0, canvas_width * canvas_height);
+                        dataSource.readBytes( data, 0, canvas_width * canvas_height);
 						channelsData_arr[channel] = data;
 					}
 					break;
@@ -261,7 +268,7 @@ package com.durej.PSDParser
 					
 					for ( i = 0; i < canvas_height * numChannels; ++i ) 
 					{
-						lines[i] = fileData.readUnsignedShort();
+						lines[i] = dataSource.readUnsignedShort();
 					}
 					
 					for ( channel = 0; channel < numChannels; ++channel )
@@ -271,7 +278,7 @@ package com.durej.PSDParser
 						for ( i = 0; i < canvas_height; ++i ) 
 						{
 							var line:ByteArray = new ByteArray();
-							fileData.readBytes( line, 0, lines[channel*canvas_height+i] );
+                            dataSource.readBytes( line, 0, lines[channel*canvas_height+i] );
 							data.writeBytes( unpack( line ) );
 						}
 						channelsData_arr[channel] = data;
@@ -341,9 +348,9 @@ package com.durej.PSDParser
 		//returns the read value and its length in format {str:value, length:size}
 		private function readPascalStringObj():Object
 		{
-			var size:uint = fileData.readUnsignedByte();
+			var size:uint = dataSource.readUnsignedByte();
 			size += 1 - size % 2;
-			return  {str:fileData.readMultiByte( size, "shift-jis").toString(), length:size + 1};
+			return  {str:dataSource.readMultiByte( size, "shift-jis").toString(), length:size + 1};
 		}
 		
 		public static function getInstance() : PSDParser 

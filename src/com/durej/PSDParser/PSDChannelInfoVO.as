@@ -1,6 +1,6 @@
 package com.durej.PSDParser 
 {
-	import flash.utils.ByteArray;
+    import flash.utils.IDataInput;
 
     /**
      * com.durej.PSDChannelInfoVO
@@ -27,10 +27,10 @@ package com.durej.PSDParser
 		public var id : int;
 		public var length : uint;
 
-		public function PSDChannelInfoVO(fileData : ByteArray) 
+		public function PSDChannelInfoVO(dataSource : IDataInput)
 		{
-			id 		= fileData.readShort();
-			length 	= fileData.readUnsignedInt();			
+			id 		= dataSource.readShort();
+			length 	= dataSource.readUnsignedInt();
 		}
 	}
 }
